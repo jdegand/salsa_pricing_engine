@@ -423,9 +423,16 @@ def create_corporate_workbook(pipeline_tuple, output_path, spec_path):
     chart.set_categories(cats)
     ws_dash.add_chart(chart, "B8")
 
+    # Symmetric grid layout adjustments to accommodate all 3 KPI blocks perfectly
     ws_dash.column_dimensions['A'].width = 4
     ws_dash.column_dimensions['B'].width = 16
     ws_dash.column_dimensions['C'].width = 16
+    ws_dash.column_dimensions['D'].width = 4   # Spacer column
+    ws_dash.column_dimensions['E'].width = 16
+    ws_dash.column_dimensions['F'].width = 16
+    ws_dash.column_dimensions['G'].width = 4   # Spacer column
+    ws_dash.column_dimensions['H'].width = 16
+    ws_dash.column_dimensions['I'].width = 16
 
     try:
         wb.save(output_path)
