@@ -226,7 +226,7 @@ def run_reconciliation_pipeline(spec_path, data_dir=None):
     try:
         _append_estimate_log(csv_path, reconciled_estimates)
         print(f"Estimate log updated: {csv_path}")
-    except (OSError, RuntimeError, pd.errors.ParserError, ValueError) as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         print(f"Estimate logging failed: {exc}", file=sys.stderr)
 
     sku_records = []
