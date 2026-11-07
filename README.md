@@ -95,7 +95,7 @@ Fresh, refrigerated salsa commands premium clean-label margins but exhibits heav
     The primary hurdle of this project was not the software engineering layer, but interpreting and structuring the agricultural cost-accounting model. Information regarding industrial fresh food yields and toll-road logistics can be highly fragmented.
     Early iterations hit design roadblocks because I initially bound the calculation formulas directly to a 12oz finished container footprint. This architectural choice broke the linearity of the pricing math, skewing material costs when ingredient pricing fluctuated. Re-architecting the engine to calculate costs using a strict 1-pound recipe mass framework, and then down-scaling to the final retail package size (12oz), resolved these systemic logic flaws and created an extensible platform capable of modeling any consumer packaging volume.
 
-## Possible Future Enhancments
+## Possible Future Enhancements
 
 * Adapt the `reconciliation_pipeline` to weigh prices based on a Seasonal Index Matrix rather than a flat 25% volatility clamp.
 
