@@ -136,3 +136,27 @@ python3 src/main.py
 ```
 
 Upon a successful runtime cycle, the engine prints a terminal-friendly summary of live single-unit product margins, appends a record to the time-series historical CSV log, and exports a newly calculated corporate spreadsheet matrix directly into the `output/` folder.
+
+## Screenshots
+
+![Executive Summary Tab](screenshots/executive-summary-tab.png)
+
+***
+
+![Global Assumptions Tab](screenshots/global-assumptions.png)
+
+***
+
+![Market Inputs Tab](screenshots/market-inputs.png)
+
+***
+
+![Landing Cost Ledger](screenshots/landing-cost-ledger.png)
+
+***
+
+![Commerical Distribution Pricing](screenshots/commerical-distribution-pricing.png)
+
+***
+
+![Risk Matrix](screenshots/risk-matrix.png)
