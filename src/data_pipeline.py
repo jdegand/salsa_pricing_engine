@@ -94,7 +94,7 @@ def fetch_datajolt_prices():
 
             price_match = re.search(r"\$\s*([\d,]+\.\d{2})", full_text)
             if not price_match:
-                raise ValueError(f"Could not parse valid price pattern from text.")
+                raise ValueError("Could not parse valid price pattern from text.")
 
             raw_pack_price = float(price_match.group(1).replace(",", ""))
 
