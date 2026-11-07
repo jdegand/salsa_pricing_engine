@@ -172,6 +172,81 @@ def _append_estimate_log(csv_path, estimates):
         new_log.to_csv(csv_path, index=False)
 
 
+def _reconcile_market_prices(estimates):
+    """Evaluate scraped data against baselines to calculate smoothed/fallback values."""
+    reconciled_estimates = {}
+    workbook_data = {}
+
+    for ingredient in SLUG_MAPPING.keys():
+        benchmark = SECONDARY_ESTIMATES[ingredient]
+        
+        if ingredient in estimates:
+            estimate = estimates[ingredient]
+            variance = abs(estimate - benchmark) / max(abs(benchmark), 1e-5)
+
+            if variance > 0.25:
+                reconciled_price = round(benchmark, 2)
+                print(f"NOTICE [{ingredient}]: High Volatility ({variance:.1%}). Clamped to baseline safety target: ${reconciled_price}/lb")
+            else:
+                reconciled_price = round((estimate + benchmark) / 2, 2)
+                
+            workbook_data[ingredient] = {
+                "unclamped": round(estimate, 2),
+                "reconciled": reconciled_price
+            }
+        else:
+            reconciled_price = FALLBACK_ESTIMATES[ingredient]
+            print(
+                f"WARNING [{ingredient}]: Web Scraper Offline/Faulty. Variance logic bypassed. "
+                f"Deploying emergency baseline: ${reconciled_price}/lb",
+                file=sys.stderr
+            )
+            workbook_data[ingredient] = {
+                "unclamped": "DOWN (Offline)",
+                "reconciled": reconciled_price
+            }
+            
+        reconciled_estimates[ingredient] = reconciled_price
+
+    return reconciled_estimates, workbook_data
+
+
+def _calculate_sku_material_cost(recipe, yields, reconciled_estimates):
+    """Aggregate total material recipe costs factoring in yield performance metrics."""
+    material_cost = 0.0
+    for ingredient, weight in recipe.items():
+        if not _is_finite_number(weight) or weight < 0:
+            weight = 0.0
+
+        market_estimate = reconciled_estimates.get(ingredient, 1.00)
+        yield_fraction = yields.get(ingredient, 0.70)
+
+        if not _is_finite_number(yield_fraction) or yield_fraction <= 0 or yield_fraction > 1:
+            yield_fraction = 0.70
+
+        material_cost += ((market_estimate / yield_fraction) * weight) * 0.75
+    return material_cost
+
+
+def _calculate_sku_landed_cost(details, material_cost):
+    """Determine final unit landed cost incorporating freight, packing, labor, and tolls."""
+    base_freight = details.get("nj_to_de_freight_per_unit", 0.12)
+    packaging_cost = details.get("packaging_cost", 0.45)
+    
+    try:
+        base_freight = float(base_freight)
+        packaging_cost = float(packaging_cost)
+    except (TypeError, ValueError):
+        base_freight = 0.12
+        packaging_cost = 0.45
+
+    labor_cost_per_unit = 17.00 / 25.0
+    allocated_toll = 15.00 / 500.0  
+    total_logistics_cost = base_freight + allocated_toll
+
+    return material_cost + labor_cost_per_unit + packaging_cost + total_logistics_cost
+
+
 def run_reconciliation_pipeline(spec_path, data_dir=None):
     """
     Read SKU specifications, calculate estimated costs, and log estimates.
@@ -183,44 +258,7 @@ def run_reconciliation_pipeline(spec_path, data_dir=None):
         raise ValueError("Specification must be a JSON object containing a 'skus' object.")
 
     estimates = fetch_datajolt_prices()
-    reconciled_estimates = {}
-    market_prices_workbook_data = {}
-
-    for ingredient in SLUG_MAPPING.keys():
-        benchmark = SECONDARY_ESTIMATES[ingredient]
-        
-        # Branch A: Live Scraping Succeeded -> Evaluate Volatility Variance
-        if ingredient in estimates:
-            estimate = estimates[ingredient]
-            
-            variance = abs(estimate - benchmark) / max(abs(benchmark), 1e-5)
-
-            if variance > 0.25:
-                reconciled_price = round(benchmark, 2)
-                print(f"NOTICE [{ingredient}]: High Volatility ({variance:.1%}). Clamped to baseline safety target: ${reconciled_price}/lb")
-            else:
-                reconciled_price = round((estimate + benchmark) / 2, 2)
-                
-            market_prices_workbook_data[ingredient] = {
-                "unclamped": round(estimate, 2),
-                "reconciled": reconciled_price
-            }
-            
-        # Branch B: Web Scraper Failed -> Trigger System Fail-safe Bypassing Variance
-        else:
-            reconciled_price = FALLBACK_ESTIMATES[ingredient]
-            print(
-                f"WARNING [{ingredient}]: Web Scraper Offline/Faulty. Variance logic bypassed. "
-                f"Deploying emergency baseline: ${reconciled_price}/lb",
-                file=sys.stderr
-            )
-            
-            market_prices_workbook_data[ingredient] = {
-                "unclamped": "DOWN (Offline)",
-                "reconciled": reconciled_price
-            }
-            
-        reconciled_estimates[ingredient] = reconciled_price
+    reconciled_estimates, market_prices_workbook_data = _reconcile_market_prices(estimates)
 
     csv_path = _resolve_log_path(data_dir)
     try:
@@ -243,34 +281,8 @@ def run_reconciliation_pipeline(spec_path, data_dir=None):
         if not isinstance(yields, dict):
             yields = {}
 
-        material_cost = 0.0
-        for ingredient, weight in recipe.items():
-            if not _is_finite_number(weight) or weight < 0:
-                weight = 0.0
-
-            market_estimate = reconciled_estimates.get(ingredient, 1.00)
-            yield_fraction = yields.get(ingredient, 0.70)
-
-            if not _is_finite_number(yield_fraction) or yield_fraction <= 0 or yield_fraction > 1:
-                yield_fraction = 0.70
-
-            material_cost += ((market_estimate / yield_fraction) * weight) * 0.75
-
-        base_freight = details.get("nj_to_de_freight_per_unit", 0.12)
-        packaging_cost = details.get("packaging_cost", 0.45)
-        
-        try:
-            base_freight = float(base_freight)
-            packaging_cost = float(packaging_cost)
-        except (TypeError, ValueError):
-            base_freight = 0.12
-            packaging_cost = 0.45
-
-        labor_cost_per_unit = 17.00 / 25.0
-        allocated_toll = 15.00 / 500.0  
-        total_logistics_cost = base_freight + allocated_toll
-
-        landed_cost = material_cost + labor_cost_per_unit + packaging_cost + total_logistics_cost
+        material_cost = _calculate_sku_material_cost(recipe, yields, reconciled_estimates)
+        landed_cost = _calculate_sku_landed_cost(details, material_cost)
 
         sku_records.append(
             {
