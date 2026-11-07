@@ -1,0 +1,55 @@
+{
+  "company_metadata": {
+    "production_facility": "Vineland, New Jersey",
+    "primary_market": "Delaware",
+    "bridge_toll_commercial": 15.00
+  },
+  "skus": {
+    "Homestyle Pico de Gallo Mild": {
+      "recipe_weights_lbs": {
+        "Roma Tomatoes": 0.66,
+        "Onions": 0.22,
+        "Jalapenos": 0.06,
+        "Cilantro": 0.06
+      },
+      "yield_efficiencies": {
+        "Roma Tomatoes": 0.75,
+        "Onions": 0.85,
+        "Jalapenos": 0.90,
+        "Cilantro": 0.60
+      },
+      "packaging_cost": 0.45,
+      "nj_to_de_freight_per_unit": 0.12
+    },
+    "Salsa Verde": {
+      "recipe_weights_lbs": {
+        "Tomatillos": 0.78,
+        "Jalapenos": 0.12,
+        "Cilantro": 0.10
+      },
+      "yield_efficiencies": {
+        "Tomatillos": 0.80,
+        "Jalapenos": 0.90,
+        "Cilantro": 0.60
+      },
+      "packaging_cost": 0.45,
+      "nj_to_de_freight_per_unit": 0.12
+    },
+    "Mango Pineapple": {
+      "recipe_weights_lbs": {
+        "Roma Tomatoes": 0.35,
+        "Mangoes": 0.30,
+        "Pineapples": 0.29,
+        "Jalapenos": 0.06
+      },
+      "yield_efficiencies": {
+        "Roma Tomatoes": 0.75,
+        "Mangoes": 0.55,
+        "Pineapples": 0.50,
+        "Jalapenos": 0.90
+      },
+      "packaging_cost": 0.48,
+      "nj_to_de_freight_per_unit": 0.14
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# ------------------------------------------------------------------------
+# Core Core Financial Architecture & Data Ingestion Incompatibilities Fixed
+# ------------------------------------------------------------------------
+
+# openpyxl version pinned to standard 3.1+ stable track to protect 
+# against archaic openpyxl 2.x/3.0.x styling registry collision crashes.
+openpyxl>=3.1.2,<3.2.0
+
+# Pandas engine pinned to a modern, stable footprint that interfaces 
+# smoothly with openpyxl writing engines without deprecated ExcelWriter warnings.
+pandas>=2.1.0,<2.3.0
+
+# ------------------------------------------------------------------------
+# Scraping & Connectivity Packages (Headless Ecosystem)
+# ------------------------------------------------------------------------
+
+# Standard HTTP client layer
+requests==2.34.2
+
+# HTML/XML soup parser layer for structured financial data extraction
+beautifulsoup4>=4.12.0,<4.13.0
+
+# Parser dependency engine needed by BeautifulSoup
+lxml>=4.9.0,<5.2.0

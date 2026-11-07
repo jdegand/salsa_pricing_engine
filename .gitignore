@@ -1,0 +1,72 @@
+# =========================================================================
+# Python Environment & Virtualization Trashes
+# =========================================================================
+# Exclude the virtual environments used inside the GitHub Codespace
+venv/
+.venv/
+env/
+.env
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# =========================================================================
+# Byte-compiled / Optimized Python Runtime Cache
+# =========================================================================
+# Excludes internal __pycache__ folders generated under your src/ directory
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================================================================
+# Local Configuration & Security Credential Backups
+# =========================================================================
+# Prevents unintentional leak of accidental environment variables or private parameters
+.env
+.secrets
+*.key
+*.pem
+
+# =========================================================================
+# Operating System & IDE Artifacts
+# =========================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================================================================
+# Project Engine Data & Pipeline Artifacts
+# =========================================================================
+# Keeps your core JSON specs tracked, but ignores heavy local scraping log leaks
+data/historical_estimates.csv
+
+# Keep the output directory tracked on GitHub, but do not bloat 
+# Git history with binary corporate Excel spreadsheets that change daily.
+output/*.xlsx
+output/*.xls
+output/*.csv
+
+# Optional override: If you want to push one baseline generated workbook to 
+# your portfolio as a visual reference, uncomment the line below:
+# !output/sams_salsa_pricing_matrix.xlsx
