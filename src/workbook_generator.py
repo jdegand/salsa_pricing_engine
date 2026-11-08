@@ -1,4 +1,5 @@
 import json
+import numbers
 import openpyxl
 import pandas as pd
 import numpy as np
@@ -35,7 +36,7 @@ def build_global_assumptions_tab(wb, styles):
     """TAB 1: Global Commercial Assumptions. Returns cell maps to prevent hardcoding."""
     ws = wb.active
     ws.title = "1. Global Assumptions"
-    ws.views.sheetView[0].showGridLines = True
+    ws.sheet_view.showGridLines = True
     ws.cell(row=2, column=1, value="B2B Commercial Drivers & Levers").font = styles.title_font
     
     headers = ["Parameter Variable", "Value Data Input"]
@@ -73,7 +74,7 @@ def build_global_assumptions_tab(wb, styles):
 def build_market_inputs_tab(wb, market_prices, styles):
     """TAB 2: Market Inputs Data Layer with comprehensive type validation."""
     ws = wb.create_sheet(title="2. Market Inputs")
-    ws.views.sheetView[0].showGridLines = True
+    ws.sheet_view.showGridLines = True
     ws.cell(row=2, column=1, value="Reconciled Agribusiness Commodity Inputs").font = styles.title_font
     
     headers = ["Commodity Ingredient", "Unclamped Raw Cost/Lb", "Reconciled Margin Price/Lb"]
@@ -94,7 +95,8 @@ def build_market_inputs_tab(wb, market_prices, styles):
         
         for col_idx, (key, fill) in enumerate([("unclamped", styles.zebra_fill), ("reconciled", styles.input_fill)], start=2):
             val = price_dict[key]
-            if not isinstance(val, (int, float)) or val < 0 or not np.isfinite(val):
+            # Explicitly reject booleans and allow NumPy numeric types via numbers.Real
+            if isinstance(val, bool) or not isinstance(val, numbers.Real) or val < 0 or not np.isfinite(val):
                 raise ValueError(f"Invalid market price valuation input ({val}) processed for ingredient: {ing}")
                 
             cell = ws.cell(row=idx, column=col_idx, value=val)
@@ -115,7 +117,7 @@ def build_market_inputs_tab(wb, market_prices, styles):
 def build_product_costing_tab(wb, df_pricing, specs_data, ing_row_map, assumptions_map, styles):
     """TAB 3: Product Costing Matrix Ledger with strict input assertions."""
     ws = wb.create_sheet(title="3. Product Costing Matrix")
-    ws.views.sheetView[0].showGridLines = True
+    ws.sheet_view.showGridLines = True
     ws.cell(row=2, column=1, value="Landed Cost Accounting Ledger (12oz Units)").font = styles.title_font
     
     headers = ["Salsa Product SKU", "Material BOM Cost ($)", "Direct Labor ($)", "Packaging BOM ($)", "Freight Logistics ($)", "Total Landed Cost ($)"]
@@ -130,11 +132,7 @@ def build_product_costing_tab(wb, df_pricing, specs_data, ing_row_map, assumptio
     for seq_idx, (idx, row) in enumerate(df_pricing.iterrows(), start=5):
         sku_name = row['SKU']
         
-        # Validates that the SKU value is present, not null, and not empty string
-        if pd.isna(sku_name) or str(sku_name).strip() == "":
-            raise ValueError(f"Blank or null SKU value encountered at DataFrame row index {idx}.")
-            
-        sku_name = str(sku_name).strip()
+        # DataFrame is pre-normalized and checked, making this block clean and secure
         if sku_name in seen_skus:
             raise ValueError(f"Duplicate SKU '{sku_name}' discovered. SKUs must be unique keys.")
         seen_skus.add(sku_name)
@@ -149,7 +147,6 @@ def build_product_costing_tab(wb, df_pricing, specs_data, ing_row_map, assumptio
         recipe = sku_spec.get("recipe_weights_lbs", {})
         yields = sku_spec.get("yield_efficiencies", {})
         
-        # Verifies that structural recipe fields map to valid nested dictionaries
         if not isinstance(recipe, dict):
             raise TypeError(f"recipe_weights_lbs configuration for SKU '{sku_name}' must be structured as a dictionary.")
         if not isinstance(yields, dict):
@@ -159,8 +156,8 @@ def build_product_costing_tab(wb, df_pricing, specs_data, ing_row_map, assumptio
             raise ValueError(f"BOM recipe details are absent or empty for target SKU: {sku_name}")
             
         for ing, weight in recipe.items():
-            # Enforces pure integer/float checks, explicitly rejecting boolean variables
-            if isinstance(weight, bool) or not isinstance(weight, (int, float)) or weight < 0 or not np.isfinite(weight):
+            # Fixed Bug #3: Swapped to numbers.Real to accommodate NumPy types
+            if isinstance(weight, bool) or not isinstance(weight, numbers.Real) or weight < 0 or not np.isfinite(weight):
                 raise ValueError(f"Invalid production weight requirement ({weight}) identified for ingredient '{ing}' in SKU '{sku_name}'.")
                 
             ing_cell_ref = ing_row_map.get(ing)
@@ -168,17 +165,17 @@ def build_product_costing_tab(wb, df_pricing, specs_data, ing_row_map, assumptio
                 raise KeyError(f"Ingredient '{ing}' required by SKU '{sku_name}' is absent from Market Inputs mapping.")
                 
             y_eff = yields.get(ing, 0.70)
-            if isinstance(y_eff, bool) or not isinstance(y_eff, (int, float)) or y_eff <= 0 or y_eff > 1.0:
+            if isinstance(y_eff, bool) or not isinstance(y_eff, numbers.Real) or y_eff <= 0 or y_eff > 1.0:
                 raise ValueError(f"Invalid yield efficiency allocation ({y_eff}) detected for ingredient '{ing}' in SKU '{sku_name}'.")
                 
             formula_parts.append(f"(({ing_cell_ref}/{y_eff}) * {weight} * 0.75)")
             
         pack_cost = sku_spec.get("packaging_cost", 0.45)
-        if isinstance(pack_cost, bool) or not isinstance(pack_cost, (int, float)) or pack_cost < 0 or not np.isfinite(pack_cost):
+        if isinstance(pack_cost, bool) or not isinstance(pack_cost, numbers.Real) or pack_cost < 0 or not np.isfinite(pack_cost):
             raise ValueError(f"Malformed structural cost data encountered on packaging metrics for SKU: {sku_name}")
             
         spec_freight = sku_spec.get("nj_to_de_freight_per_unit", 0.12)
-        if isinstance(spec_freight, bool) or not isinstance(spec_freight, (int, float)) or spec_freight < 0 or not np.isfinite(spec_freight):
+        if isinstance(spec_freight, bool) or not isinstance(spec_freight, numbers.Real) or spec_freight < 0 or not np.isfinite(spec_freight):
             raise ValueError(f"Malformed structural freight cost configuration verified for SKU: {sku_name}")
             
         ws.cell(row=seq_idx, column=2, value=f"={'+'.join(formula_parts)}" if formula_parts else 0).number_format = '$#,##0.00'
@@ -210,10 +207,9 @@ def build_product_costing_tab(wb, df_pricing, specs_data, ing_row_map, assumptio
 def build_client_pricing_tab(wb, df_pricing, costing_row_map, assumptions_map, styles):
     """TAB 4: B2B Client Pricing Tiers Framework."""
     ws = wb.create_sheet(title="4. B2B Client Pricing Tiers")
-    ws.views.sheetView[0].showGridLines = True
+    ws.sheet_view.showGridLines = True
     ws.cell(row=2, column=1, value="Commercial Distribution Pricing Framework").font = styles.title_font
     
-    # Updated Header from 'Spoilage Allowance' to 'Spoilage Cost ($)' to reflect dollar metrics
     headers = ["Product SKU", "Landed Base Anchor", "Grocery Whls Price", "Spoilage Cost ($)", "Grocery Net Gross Profit ($)", "Subscription Price", "Subscription Net Gross Profit ($)"]
     for c_idx, text in enumerate(headers, start=1):
         cell = ws.cell(row=4, column=c_idx, value=text)
@@ -273,7 +269,7 @@ def build_risk_matrices_tabs(wb, df_pricing, costing_row_map, pricing_row_map, a
     sheet_title = "6. Subscription Risk Matrix" if is_subscription else "5. Risk Sensitivity Matrix"
     
     ws = wb.create_sheet(title=sheet_title)
-    ws.views.sheetView[0].showGridLines = True
+    ws.sheet_view.showGridLines = True
     ws.cell(row=2, column=1, value=title_str).font = styles.title_font
     
     inflation_shifts = [1.00, 1.15, 1.30, 1.45]
@@ -314,7 +310,6 @@ def build_risk_matrices_tabs(wb, df_pricing, costing_row_map, pricing_row_map, a
                 axis_y_coordinate = f"$A{grid_row_num}"
                 axis_x_coordinate = f"{col_letter}${current_matrix_row + 2}"
                 
-                # Unmasked formula allows errors to surface cleanly
                 sim_formula = (
                     f"=(({target_price_cell} * (1-{assumptions_map['spoilage_allowance']})) - "
                     f"({material_ref} * {axis_y_coordinate} + {labor_ref} + {packaging_ref} + "
@@ -336,7 +331,7 @@ def build_risk_matrices_tabs(wb, df_pricing, costing_row_map, pricing_row_map, a
 def build_executive_summary_tab(wb, num_skus, pricing_avg_row, styles):
     """TAB 7: Executive Summary Dashboard."""
     ws = wb.create_sheet(title="Summary")
-    ws.views.sheetView[0].showGridLines = True
+    ws.sheet_view.showGridLines = True
     ws.cell(row=2, column=1, value="Salsa Pricing Engine: Executive Summary").font = styles.title_font
     
     kpis = [
@@ -354,7 +349,6 @@ def build_executive_summary_tab(wb, num_skus, pricing_avg_row, styles):
         val_cell.font = styles.kpi_value_font
         val_cell.number_format = '$#,##0.00'
         
-        # Range(4, 6) wraps styling uniformly across both titles and values
         for r in range(4, 6):
             for c in range(col_start, col_start + 2):
                 cell = ws.cell(row=r, column=c)
@@ -393,29 +387,29 @@ def create_corporate_workbook(pipeline_tuple, output_path, spec_path):
         
     df_pricing, market_prices = pipeline_tuple
     
-    # Asserting type checking protections across Dataframe objects 
     if not isinstance(df_pricing, pd.DataFrame):
         raise TypeError("Input parameter df_pricing must be structured as a pandas DataFrame.")
         
     if df_pricing.empty:
         raise ValueError("The incoming df_pricing DataFrame contains no viable data records.")
         
-    # Hardens model against missing or malformed unique identifier fields
     if "SKU" not in df_pricing.columns:
         raise ValueError("The incoming df_pricing DataFrame must contain an 'SKU' column.")
+
+    # Clean and isolate SKU strings immediately at entry point
+    df_pricing = df_pricing.copy()
+    df_pricing["SKU"] = df_pricing["SKU"].astype(str).str.strip()
         
-    # Early validation check to ensure SKU array has no completely blank entries
-    if df_pricing["SKU"].isna().any() or (df_pricing["SKU"].astype(str).str.strip() == "").any():
-        raise ValueError("The df_pricing 'SKU' column contains null, NaN, or completely blank rows.")
+    # Re-evaluate validation check to ensure normalized fields contain no empty or null records
+    if df_pricing["SKU"].isna().any() or (df_pricing["SKU"] == "").any():
+        raise ValueError("The df_pricing 'SKU' column contains null, NaN, or completely blank rows after normalization.")
 
     wb = openpyxl.Workbook()
     try:
-        # Encompasses file input stream and generation sequence within the resource block
         with open(spec_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             specs_data = data.get("skus")
             
-            # Prevents downstream mapping exceptions if the JSON structure is incorrect
             if not isinstance(specs_data, dict):
                 raise TypeError("The specification JSON document must contain a valid 'skus' dictionary mapping.")
             
@@ -432,5 +426,4 @@ def create_corporate_workbook(pipeline_tuple, output_path, spec_path):
         
         wb.save(output_path)
     finally:
-        # Guarantees that system handles are recycled cleanly even if data compilation breaks
         wb.close()
